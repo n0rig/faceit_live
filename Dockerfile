@@ -1,5 +1,28 @@
-FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+FROM tensorflow/tensorflow:latest-gpu-py3
 ENV LANG C.UTF-8
+
+
+###########
+##  faceswap dockerfile ##
+###########
+
+RUN apt-get update -qq -y \
+ && apt-get install -y libsm6 libxrender1 libxext-dev python3-tk\
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN echo "installing python requirements"
+
+COPY requirements*.txt /opt/
+RUN pip3 install cmake
+RUN pip3 install dlib --install-option=--yes --install-option=USE_AVX_INSTRUCTIONS
+RUN pip3 --no-cache-dir install -r /opt/requirements.txt && rm /opt/requirements.txt
+
+# patch for tensorflow:latest-gpu-py3 image
+RUN cd /usr/local/cuda/lib64 \
+ && mv stubs/libcuda.so ./ \
+ && ln -s libcuda.so libcuda.so.1 \
+ && ldconfig
 
 ###########
 ## Tools ##
@@ -13,21 +36,6 @@ RUN apt-get update --fix-missing && apt-get install -y \
     cmake \
     imagemagick
 
-# downgrade to cudnn 7.0 (tensorflow 1.5 binary doesn't work with 7.1)
-RUN apt-get update && apt-get install -y --allow-downgrades --no-install-recommends --allow-change-held-packages \
-    bzip2 \
-    g++ \
-    git \
-    graphviz \
-    libgl1-mesa-glx \
-    libhdf5-dev \
-    openmpi-bin \
-    wget \
-    libcudnn7=7.0.5.15-1+cuda9.0 \
-    libcudnn7-dev=7.0.5.15-1+cuda9.0 \
-    && \
-    rm -rf /var/lib/apt/lists/*
-
 ##############
 ## Anaconda ##
 ##############
@@ -39,7 +47,7 @@ RUN apt-get update --fix-missing && apt-get install -y \
     libxrender1
 
 RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
-    wget --quiet https://repo.continuum.io/archive/Anaconda3-5.0.1-Linux-x86_64.sh -O ~/anaconda.sh && \
+    wget --quiet https://repo.continuum.io/archive/Anaconda3-2019.03-Linux-x86_64.sh -O ~/anaconda.sh && \
     /bin/bash ~/anaconda.sh -b -p /opt/conda && \
     rm ~/anaconda.sh
 
@@ -68,12 +76,6 @@ RUN /bin/bash -c "\
 RUN echo "export MKL_DYNAMIC=FALSE" >> ~/.bashrc
 
 RUN python --version
-RUN echo "installing python requirements"
-COPY requirements.txt /code/
-
-RUN /bin/bash -c "\
-    pip install --upgrade pip && \
-    pip install --ignore-installed -r /code/requirements.txt"
 
 # edit ImageMagick policy /etc/ImageMagick-6/policy.xml
 # comment out this line <policy domain="path" rights="none" pattern="@*" />

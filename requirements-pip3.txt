@@ -15,9 +15,7 @@ cycler==0.10.0
 dask==1.1.1
 decorator==4.3.2
 defer==1.0.6
-dictionary
 dlib==19.16.0
-face_recognition
 face-recognition==1.2.3
 face-recognition-models==0.3.0
 ffmpy==0.2.2
@@ -56,7 +54,6 @@ pyasn1==0.1.9
 pycups==1.9.73
 pycurl==7.43.0
 pydot==1.4.1
-pyfakewebcam
 pygobject==3.20.0
 PyJWT==1.3.0
 pyparsing==2.3.1
@@ -80,7 +77,6 @@ ssh-import-id==5.5
 system-service==0.3
 tensorboard==1.12.2
 tensorflow-gpu==1.12.0
-tensorflow-gpu==1.5.0
 termcolor==1.1.0
 toolz==0.9.0
 tqdm==4.31.1

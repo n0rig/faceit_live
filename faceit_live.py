@@ -1,4 +1,5 @@
 import os
+import subprocess
 from argparse import Namespace
 import argparse
 import youtube_dl
@@ -18,15 +19,11 @@ import pyfakewebcam
 import shutil
 from pathlib import Path
 import sys
-sys.path.insert(0,'faceswap')
+sys.path.append('faceswap')
 
-from lib.utils import FullHelpArgumentParser
-from scripts.extract import ExtractTrainingData
-from scripts.train import TrainingProcessor
-from scripts.convert import ConvertImage
-from lib.faces_detect import detect_faces
-from plugins.PluginLoader import PluginLoader
-from lib.FaceFilter import FaceFilter
+import lib.cli as cli
+from scripts.train import Train
+from scripts.convert import Convert
 
 class FaceIt:
     VIDEO_PATH = 'data/videos'
@@ -359,31 +356,71 @@ class FaceIt:
                 image = _convert_frame(image, convert_colors = False)
                 cv2.imwrite(os.path.join(self.OUTPUT_PATH, face_file), image)
 
+
 class FaceSwapInterface:
     def __init__(self):
-        self._parser = FullHelpArgumentParser()
-        self._subparser = self._parser.add_subparsers()
+        print("initing faceswapinterface")
+
+    def bad_args(args):
+        """ Print help on bad arguments """
+        PARSER.print_help()
+        exit(0)
 
     def extract(self, input_dir, output_dir, filter_path):
-        extract = ExtractTrainingData(
-            self._subparser, "extract", "Extract the faces from a pictures.")
-        args_str = "extract --input-dir {} --output-dir {} --processes 1 --detector cnn --filter {}"
+        args_str = "python3 faceswap/faceswap.py extract --input-dir {} --output-dir {} --detector mtcnn -mp -A fan --filter {}"
         args_str = args_str.format(input_dir, output_dir, filter_path)
-        self._run_script(args_str)
+        print("args str: {}".format(args_str))
+        args_array = args_str.split(" ")
+        print("args array: {}".format(args_array))
+        for line in self._execute(args_array):
+            print(line, end="")
 
-    def train(self, input_a_dir, input_b_dir, model_dir, gan = False):
-        model_type = "Original"
-        if gan:
-            model_type = "GAN"
-        train = TrainingProcessor(
-            self._subparser, "train", "This command trains the model for the two faces A and B.")
-        args_str = "train --input-A {} --input-B {} --model-dir {} --trainer {} --batch-size {} --write-image -p"
-        args_str = args_str.format(input_a_dir, input_b_dir, model_dir, model_type, 512)
-        self._run_script(args_str)
+    def convert(self, input_dir, output_dir, model_dir, filter_path):
+        args_str = "convert -i {} -o {} -m {} -b 4 -c Masked -S -M facehullandrect -g 4 -e 2 -t OriginalHighRes"
+        args_str = args_str.format(input_dir, output_dir, filter_path)
+        print("args str: {}".format(args_str))
+        args_array = args_str.split(" ")
+        print("args array: {}".format(args_array))
+        for line in self._execute(args_array):
+            print(line, end="")
+
+
+    def train(self, input_a_dir, input_b_dir, model_dir):
+        args_str = "train --input-A {} --input-B {} --model-dir {} --trainer OriginalHighRes -g 4 --batch-size 512"
+        args_str = args_str.format(input_a_dir, input_b_dir, model_dir)
+        print("args str: {}".format(args_str))
+        args_array = args_str.split(" ")
+        print("args array: {}".format(args_array))
+        for line in self._execute(args_array):
+            print(line, end="")
+
+    def _execute(self, cmd):
+        popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+        for stdout_line in iter(popen.stdout.readline, ""):
+            yield stdout_line
+        popen.stdout.close()
+        return_code = popen.wait()
+        if return_code:
+            raise subprocess.CalledProcessError(return_code, cmd)
 
     def _run_script(self, args_str):
-        args = self._parser.parse_args(args_str.split(' '))
-        args.func(args)
+        PARSER = cli.FullHelpArgumentParser()
+        SUBPARSER = PARSER.add_subparsers()
+        EXTRACT = cli.ExtractArgs(SUBPARSER,
+                                  "extract",
+                                  "Extract the faces from pictures")
+        TRAIN = cli.TrainArgs(SUBPARSER,
+                              "train",
+                              "This command trains the model for the two faces A and B")
+        CONVERT = cli.ConvertArgs(SUBPARSER,
+                                  "convert",
+                                  "Convert a source image to a new one with the face swapped")
+        GUI = cli.GuiArgs(SUBPARSER,
+                          "gui",
+                          "Launch the Faceswap Graphical User Interface")
+        PARSER.set_defaults(func=self.bad_args)
+        ARGUMENTS = PARSER.parse_args(args_str.split(' '))
+        ARGUMENTS.func(ARGUMENTS)
 
 
 if __name__ == '__main__':
@@ -398,7 +435,7 @@ if __name__ == '__main__':
 
     FaceIt.add_model(faceit)
     parser = argparse.ArgumentParser()
-    parser.add_argument('task', choices = ['preprocess', 'train', 'convert','live','webcam'])
+    parser.add_argument('task', choices = ['preprocess', 'train', 'convert', 'live', 'webcam'])
     parser.add_argument('model', choices = FaceIt.MODELS.keys())
     parser.add_argument('video', nargs = '?')
     parser.add_argument('--duration', type = int, default = None)
