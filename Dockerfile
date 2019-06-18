@@ -14,7 +14,7 @@ RUN apt-get update --fix-missing && apt-get install -y \
     imagemagick
 
 # downgrade to cudnn 7.0 (tensorflow 1.5 binary doesn't work with 7.1)
-RUN apt-get update && apt-get install -y --allow-downgrades --no-install-recommends \
+RUN apt-get update && apt-get install -y --allow-downgrades --no-install-recommends --allow-change-held-packages \
     bzip2 \
     g++ \
     git \
@@ -73,7 +73,7 @@ COPY requirements.txt /code/
 
 RUN /bin/bash -c "\
     pip install --upgrade pip && \
-    pip install -r /code/requirements.txt"
+    pip install --ignore-installed -r /code/requirements.txt"
 
 # edit ImageMagick policy /etc/ImageMagick-6/policy.xml
 # comment out this line <policy domain="path" rights="none" pattern="@*" />
