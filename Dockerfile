@@ -7,11 +7,12 @@ ENV LANG C.UTF-8
 ###########
 
 RUN apt-get update -qq -y \
- && apt-get install -y libsm6 libxrender1 libxext-dev python3-tk\
+ && apt-get install -y libsm6 libxrender1 libxext-dev python3-tk libcups2-dev \
+ && apt-get install -y libxml2-dev libxslt-dev python-dev python3-dev \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements   .txt /opt/
+COPY requirements.txt /opt/
 RUN pip3 install cmake
 RUN pip3 --no-cache-dir install -r /opt/requirements.txt && rm /opt/requirements.txt
 
